@@ -2,17 +2,122 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LeetPad</title>
+    <meta name="color-scheme" content="light dark" />
+
+    <title>LeetPad — Free scratch pad for LeetCode &amp; coding interviews | Arrays, matrices &amp; notes</title>
+    <meta
+      name="description"
+      content="LeetPad is a fast, free browser canvas for sketching arrays, matrices, text notes, line breaks, and pen marks while you grind LeetCode, interviews, and DSA. No signup — open leetpad.in and start."
+    />
+    <meta
+      name="keywords"
+      content="LeetPad, LeetCode scratch pad, coding interview whiteboard, array visualizer, matrix editor, DSA notes, algorithm scratch pad, competitive programming, interview prep, free online notepad, leetpad.in"
+    />
+    <meta name="author" content="Sanket Khadse" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <meta name="theme-color" content="#fea116" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)" />
+
+    <link rel="canonical" href="https://leetpad.in/" />
+    <link rel="alternate" hreflang="en" href="https://leetpad.in/" />
+    <link rel="alternate" hreflang="x-default" href="https://leetpad.in/" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LeetPad" />
+    <meta property="og:url" content="https://leetpad.in/" />
+    <meta property="og:title" content="LeetPad — Interview scratch pad for arrays, matrices &amp; notes" />
+    <meta
+      property="og:description"
+      content="Sketch arrays, matrices, notes, and pen marks in your browser. Built for LeetCode practice and coding interviews — fast, free, and MIT licensed."
+    />
+    <meta property="og:image" content="https://leetpad.in/og.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LeetPad — coding interview scratch pad" />
+    <meta property="og:locale" content="en_IN" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LeetPad — Free scratch pad for LeetCode &amp; interviews" />
+    <meta
+      name="twitter:description"
+      content="Arrays, matrices, notes, and pen marks in one canvas. Open source — leetpad.in"
+    />
+    <meta name="twitter:image" content="https://leetpad.in/og.svg" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://leetpad.in/#website",
+            "url": "https://leetpad.in/",
+            "name": "LeetPad",
+            "description": "Free browser canvas for arrays, matrices, notes, and pen marks while you solve coding interview problems.",
+            "inLanguage": "en-IN",
+            "publisher": { "@id": "https://leetpad.in/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://leetpad.in/#organization",
+            "name": "LeetPad",
+            "url": "https://leetpad.in/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://leetpad.in/favicon.svg",
+              "width": 512,
+              "height": 512
+            },
+            "sameAs": ["https://github.com/edusanketdk/leetpad"]
+          },
+          {
+            "@type": "WebApplication",
+            "name": "LeetPad",
+            "url": "https://leetpad.in/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript. Modern evergreen browser recommended.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "description": "Sketch arrays, matrices, compact text notes, line breaks, and freehand pen marks on an infinite canvas. Ideal for LeetCode-style practice and technical interviews.",
+            "featureList": [
+              "Array and matrix cell editing with keyboard navigation",
+              "Slash commands and auto-create from bracket text",
+              "Pen layer with undo per stroke",
+              "Dark and light themes"
+            ],
+            "screenshot": "https://leetpad.in/og.svg",
+            "isAccessibleForFree": true,
+            "publisher": { "@id": "https://leetpad.in/#organization" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
+    <noscript>
+      <p>
+        <strong>LeetPad</strong> (leetpad.in) is a free scratch pad for coding interviews and LeetCode-style practice:
+        draw arrays, matrices, short notes, and pen marks in your browser. Enable JavaScript to use the app.
+      </p>
+    </noscript>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,0 +1,9 @@
+/* TEAM */
+Author: Sanket Khadse
+Site: https://leetpad.in
+Repository: https://github.com/edusanketdk/leetpad
+
+/* SITE */
+Last update: 2026-05
+Standards: HTML5, CSS, TypeScript, Svelte 5
+Components: Vite, Cloudflare Workers (assets)

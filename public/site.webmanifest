@@ -1,0 +1,19 @@
+{
+  "name": "LeetPad — Interview scratch pad",
+  "short_name": "LeetPad",
+  "description": "Free canvas for arrays, matrices, notes, and pen marks while you solve LeetCode-style problems.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbfbfc",
+  "theme_color": "#fea116",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
