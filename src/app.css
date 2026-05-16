@@ -20,6 +20,8 @@
   --accent-g: #16a34a;
   --accent-b: #fea116;
 
+  --canvas-dot: color-mix(in srgb, var(--text-h) 9%, transparent);
+
   color-scheme: light;
   font: 16px/1.55 var(--sans);
   color: var(--text);
@@ -47,6 +49,8 @@ html.dark {
   --accent-g: #4ade80;
   --accent-b: #fea116;
   color-scheme: dark;
+
+  --canvas-dot: color-mix(in srgb, #fff 11%, transparent);
 }
 
 *,

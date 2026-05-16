@@ -1,10 +1,10 @@
-import type { ArrayBlock, Block, BlockId, MatrixBlock, SpineBlock } from './types';
+import type { ArrayBlock, Block, BlockId, MatrixBlock, NoteBlock, SpineBlock } from './types';
 
 function uid(): BlockId {
   return crypto.randomUUID();
 }
 
-export type PlacedBlock = Block & { x: number; y: number };
+export type PlacedBlock = Block & { x: number; y: number; caption?: string };
 
 const MAX_UNDO = 50;
 const undoStack = $state<PlacedBlock[][]>([]);
@@ -21,37 +21,7 @@ export function pushUndoPoint() {
 }
 
 function defaultBlocks(): PlacedBlock[] {
-  const id = () => uid();
-  return [
-    {
-      id: id(),
-      type: 'paragraph',
-      x: 48,
-      y: 36,
-      width: 268,
-      height: 128,
-      content:
-        'Click empty board to set an insert point (marker). Insert (⌘/) or right-click empty canvas uses that spot. Right-click a structure (or ⌘/ while inside it) for options. ⌘C / ⌘V copies the selected structure when not typing in a cell. Section spine: full-width horizontal guide.',
-    },
-    {
-      id: id(),
-      type: 'array',
-      x: 48,
-      y: 220,
-      values: ['1', '3', '-1', '2', '4'],
-    },
-    { id: id(), type: 'arrow', x: 48, y: 380 },
-    {
-      id: id(),
-      type: 'matrix',
-      x: 420,
-      y: 220,
-      rows: [
-        ['1', '2', '3'],
-        ['4', '5', '6'],
-      ],
-    },
-  ];
+  return [];
 }
 
 export const doc = $state({
@@ -102,9 +72,17 @@ export function copyStructureById(id: BlockId): boolean {
 
 export function pasteStructureAt(pos: { x: number; y: number }): PlacedBlock | null {
   if (!structureClipboard.snapshot) return null;
-  const raw = JSON.parse(JSON.stringify(structureClipboard.snapshot)) as PlacedBlock;
-  const { x: _x, y: _y, ...rest } = raw;
-  const next = { ...rest, id: uid() } as Block;
+  const snapshot = JSON.parse(JSON.stringify(structureClipboard.snapshot)) as Record<string, unknown>;
+  const { x: _x, y: _y, ...rest } = snapshot;
+  const ty = String(rest.type ?? '');
+  let next: Block;
+  if (ty === 'paragraph') {
+    next = { id: uid(), type: 'note', content: String(rest.content ?? '') };
+  } else if (ty === 'arrow') {
+    next = { id: uid(), type: 'note', content: '' };
+  } else {
+    next = { ...rest, id: uid() } as Block;
+  }
   const px = next.type === 'spine' ? 0 : pos.x;
   return placeBlockAt(next, px, pos.y);
 }
@@ -122,10 +100,16 @@ export function replaceBlocks(next: PlacedBlock[], skipHistory = false) {
 export function updateBlock<T extends Block>(id: BlockId, fn: (b: T) => T) {
   const i = doc.blocks.findIndex((b) => b.id === id);
   if (i === -1) return;
-  const cur = doc.blocks[i] as T & { x: number; y: number };
+  const cur = doc.blocks[i] as T & PlacedBlock;
   const { x, y } = cur;
+  const cap = cur.caption;
   const next = fn(cur as T);
-  doc.blocks[i] = { ...next, x, y } as PlacedBlock;
+  doc.blocks[i] = {
+    ...next,
+    x,
+    y,
+    ...(cap !== undefined ? { caption: cap } : {}),
+  } as PlacedBlock;
 }
 
 export function removeBlock(id: BlockId) {
@@ -191,13 +175,15 @@ export function createSpineBlock(): SpineBlock {
   return { id: uid(), type: 'spine' };
 }
 
+export function createNoteBlock(): NoteBlock {
+  return { id: uid(), type: 'note', content: '' };
+}
+
 export function factory(kind: Exclude<Block['type'], 'array' | 'matrix'>): Block {
   const id = uid();
   switch (kind) {
-    case 'paragraph':
-      return { id, type: 'paragraph', content: '', width: 268, height: 128 };
-    case 'arrow':
-      return { id, type: 'arrow' };
+    case 'note':
+      return { id, type: 'note', content: '' };
     case 'spine':
       return { id, type: 'spine' };
     default: {

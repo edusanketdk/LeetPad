@@ -1,20 +1,43 @@
 <script lang="ts">
-  import { doc, moveBlock, pushUndoPoint, clearSelection, type PlacedBlock } from '../lib/document.svelte';
+  import { tick } from 'svelte';
+  import {
+    doc,
+    moveBlock,
+    pushUndoPoint,
+    clearSelection,
+    placeBlockAt,
+    createNoteBlock,
+    removeBlock,
+    type PlacedBlock,
+  } from '../lib/document.svelte';
+  import {
+    sketchStrokes,
+    appendSketchStroke,
+    clearAllSketches,
+  } from '../lib/sketches.svelte';
   import { resolveNonOverlapForBlock } from '../lib/layoutResolve';
-  import ParagraphBlock from './blocks/ParagraphBlock.svelte';
-  import ArrowBlock from './blocks/ArrowBlock.svelte';
+  import NoteBlock from './blocks/NoteBlock.svelte';
   import ArrayBlock from './blocks/ArrayBlock.svelte';
   import MatrixBlock from './blocks/MatrixBlock.svelte';
   import SpineBlock from './blocks/SpineBlock.svelte';
   import StructureMenu from './StructureMenu.svelte';
+  import { focusBlockRoot } from '../lib/focusRegistry';
 
   type Props = {
+    penActive?: boolean;
+    penStrokeColor?: string;
     onSlash?: () => void;
     onEmptyContextMenu: (pos: { x: number; y: number }) => void;
     onOpenAutoCreate?: (pos: { x: number; y: number }) => void;
   };
 
-  let { onSlash, onEmptyContextMenu, onOpenAutoCreate }: Props = $props();
+  let {
+    penActive = false,
+    penStrokeColor = '#12141a',
+    onSlash,
+    onEmptyContextMenu,
+    onOpenAutoCreate,
+  }: Props = $props();
 
   let canvasEl: HTMLDivElement | null = $state(null);
 
@@ -28,7 +51,7 @@
     oy: number;
   } | null>(null);
 
-  let paraDragPrep = $state<{
+  let noteDragPrep = $state<{
     id: string;
     sx: number;
     sy: number;
@@ -50,8 +73,26 @@
     inp: HTMLInputElement;
   } | null>(null);
 
+  let sketchLive = $state<{ points: { x: number; y: number }[]; color: string } | null>(null);
+
+  let captionEditingId = $state<string | null>(null);
+  let captionDraft = $state('');
+
   $effect(() => {
-    const p = paraDragPrep;
+    const onClear = () => {
+      clearAllSketches();
+      sketchLive = null;
+    };
+    window.addEventListener('leetpad-clear-sketches', onClear);
+    return () => window.removeEventListener('leetpad-clear-sketches', onClear);
+  });
+
+  $effect(() => {
+    if (!penActive) sketchLive = null;
+  });
+
+  $effect(() => {
+    const p = noteDragPrep;
     if (!p) return;
     const thresh = 6;
     const thresh2 = thresh * thresh;
@@ -61,14 +102,14 @@
       if (dx * dx + dy * dy >= thresh2) {
         pushUndoPoint();
         drag = { id: p.id, sx: p.sx, sy: p.sy, ox: p.ox, oy: p.oy };
-        paraDragPrep = null;
+        noteDragPrep = null;
       }
     };
     const onUp = () => {
-      const cur = paraDragPrep;
+      const cur = noteDragPrep;
       if (cur) {
         cur.ta.focus();
-        paraDragPrep = null;
+        noteDragPrep = null;
       }
     };
     window.addEventListener('pointermove', onMove);
@@ -147,7 +188,9 @@
   });
 
   $effect(() => {
+    void penActive;
     const openMenu = (e: CustomEvent<{ id: string }>) => {
+      if (penActive) return;
       const id = e.detail?.id;
       if (!id || !canvasEl) return;
       const el = canvasEl.querySelector(`[data-block-id="${id}"]`);
@@ -177,7 +220,27 @@
     };
   }
 
+  function canvasPointFromClient(clientX: number, clientY: number): { x: number; y: number } | null {
+    if (!canvasEl) return null;
+    const rect = canvasEl.getBoundingClientRect();
+    return {
+      x: clientX - rect.left + canvasEl.scrollLeft,
+      y: clientY - rect.top + canvasEl.scrollTop,
+    };
+  }
+
+  function surfacePoint(clientX: number, clientY: number): { x: number; y: number } | null {
+    const surface = canvasEl?.querySelector('.canvas-surface') as HTMLElement | null;
+    if (!surface) return null;
+    const sr = surface.getBoundingClientRect();
+    return { x: clientX - sr.left, y: clientY - sr.top };
+  }
+
   function onSurfaceContextMenu(e: MouseEvent) {
+    if (penActive) {
+      e.preventDefault();
+      return;
+    }
     if (!canvasEl) return;
     const t = e.target as HTMLElement;
     if (t.closest('[data-placed-root]')) return;
@@ -190,6 +253,7 @@
   }
 
   function startDrag(blockId: string, e: PointerEvent) {
+    if (penActive) return;
     const node = doc.blocks.find((b) => b.id === blockId);
     if (!node) return;
     doc.selectedBlockId = blockId;
@@ -209,9 +273,9 @@
     return null;
   }
 
-  /** Capture pointer + context menu on the placed root so cells/inputs still participate. */
   function placedRootInteractions(node: HTMLElement, blockId: string) {
     const onCtx = (e: MouseEvent) => {
+      if (penActive) return;
       const b = doc.blocks.find((x) => x.id === blockId);
       if (!b) return;
       e.preventDefault();
@@ -223,6 +287,7 @@
     };
 
     const cap = (e: PointerEvent) => {
+      if (penActive) return;
       if (e.button !== 0) return;
       const t = e.target as HTMLElement;
       if (t.closest('button')) return;
@@ -247,7 +312,7 @@
         return;
       }
 
-      const ta = t.closest('textarea.paragraph-ta') as HTMLTextAreaElement | null;
+      const ta = t.closest('textarea.note-ta') as HTMLTextAreaElement | null;
       if (ta) {
         if (e.altKey) {
           e.preventDefault();
@@ -255,7 +320,7 @@
           if (document.activeElement === ta) return;
           if (doc.selectedBlockId !== blockId) return;
           e.preventDefault();
-          paraDragPrep = {
+          noteDragPrep = {
             id: blockId,
             sx: e.clientX,
             sy: e.clientY,
@@ -284,42 +349,142 @@
     };
   }
 
+  function pruneEmptyNoteIfAny(id: string | null) {
+    if (!id) return;
+    const b = doc.blocks.find((x) => x.id === id);
+    if (b?.type === 'note' && !String(b.content ?? '').trim()) {
+      removeBlock(id);
+    }
+  }
+
   function onViewportPointerDown(e: PointerEvent) {
+    if (penActive) return;
     if (e.button !== 0) return;
     const t = e.target as HTMLElement;
     if (t.closest('[data-placed-root]')) return;
     const under = blockIdUnderClientPoint(e.clientX, e.clientY);
     if (under) {
       doc.insertAnchor = null;
+      if (doc.selectedBlockId !== under) {
+        pruneEmptyNoteIfAny(doc.selectedBlockId);
+      }
       doc.selectedBlockId = under;
       doc.cellLinearFocus = null;
       return;
     }
+    pruneEmptyNoteIfAny(doc.selectedBlockId);
     clearSelection();
     const p = canvasContentPoint(e);
     if (p) doc.insertAnchor = p;
   }
 
+  function onViewportDblClick(e: MouseEvent) {
+    if (penActive) return;
+    const t = e.target as HTMLElement;
+    if (t.closest('[data-placed-root]')) return;
+    if (t.closest('[data-caption-strip]')) return;
+    const p = canvasPointFromClient(e.clientX, e.clientY);
+    if (!p) return;
+    e.preventDefault();
+    const placed = placeBlockAt(createNoteBlock(), p.x - 4, p.y - 4);
+    doc.selectedBlockId = placed.id;
+    void tick().then(() => focusBlockRoot(placed.id));
+  }
+
   function onPlacedPointerDownBubble(b: PlacedBlock, e: PointerEvent) {
+    if (penActive) return;
     if (e.button !== 0) return;
     doc.insertAnchor = null;
+    if (doc.selectedBlockId && doc.selectedBlockId !== b.id) {
+      pruneEmptyNoteIfAny(doc.selectedBlockId);
+    }
     doc.selectedBlockId = b.id;
     const el = e.target as HTMLElement;
-    if (el.closest('[data-cell-input]') || el.closest('textarea.paragraph-ta') || el.closest('button')) return;
+    if (el.closest('[data-cell-input]') || el.closest('textarea.note-ta') || el.closest('button')) return;
     doc.cellLinearFocus = null;
   }
 
   function onCanvasSelectStart(e: Event) {
     const el = e.target as HTMLElement | null;
     if (!el || !canvasEl?.contains(el)) return;
-    if (el.closest('[data-cell-input]') || el.closest('.paragraph-ta')) return;
+    if (el.closest('[data-cell-input]')) return;
+    if (el.closest('.note-ta')) {
+      if (document.activeElement !== el) e.preventDefault();
+      return;
+    }
     e.preventDefault();
   }
 
   function onCanvasDragStart(e: DragEvent) {
     const t = e.target as HTMLElement;
-    if (t.closest('[data-cell-input]') || t.closest('.paragraph-ta')) return;
+    if (t.closest('[data-cell-input]') || t.closest('.note-ta')) return;
     if (canvasEl?.contains(e.target as Node)) e.preventDefault();
+  }
+
+  async function startCaptionEdit(b: PlacedBlock) {
+    captionEditingId = b.id;
+    captionDraft = b.caption ?? '';
+    await tick();
+    const inp = canvasEl?.querySelector(
+      `[data-block-id="${b.id}"] [data-caption-editor]`,
+    ) as HTMLInputElement | null;
+    inp?.focus();
+    inp?.select();
+  }
+
+  function commitCaption(b: PlacedBlock) {
+    const v = captionDraft.trim();
+    b.caption = v.length > 0 ? v : undefined;
+    captionEditingId = null;
+    captionDraft = '';
+  }
+
+  function polyPoints(pts: { x: number; y: number }[]): string {
+    return pts.map((p) => `${p.x},${p.y}`).join(' ');
+  }
+
+  function onPenDown(e: PointerEvent) {
+    if (e.button !== 0) return;
+    const p = surfacePoint(e.clientX, e.clientY);
+    if (!p) return;
+    sketchLive = { points: [p], color: penStrokeColor };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onPenMove(e: PointerEvent) {
+    if (!sketchLive || (e.buttons & 1) === 0) return;
+    const p = surfacePoint(e.clientX, e.clientY);
+    if (!p) return;
+    const last = sketchLive.points.at(-1);
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1.2) {
+      sketchLive = { points: [...sketchLive.points, p], color: sketchLive.color };
+    }
+  }
+
+  function onPenUp(e: PointerEvent) {
+    if (!sketchLive || sketchLive.points.length === 0) {
+      sketchLive = null;
+      return;
+    }
+    if (sketchLive.points.length === 1) {
+      appendSketchStroke({
+        id: crypto.randomUUID(),
+        points: [sketchLive.points[0], sketchLive.points[0]],
+        color: sketchLive.color,
+      });
+    } else {
+      appendSketchStroke({
+        id: crypto.randomUUID(),
+        points: sketchLive.points,
+        color: sketchLive.color,
+      });
+    }
+    sketchLive = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   }
 </script>
 
@@ -331,6 +496,7 @@
   aria-label="Scratch canvas"
   oncontextmenu={onSurfaceContextMenu}
   onpointerdown={onViewportPointerDown}
+  ondblclick={onViewportDblClick}
   onselectstart={onCanvasSelectStart}
   ondragstart={onCanvasDragStart}
 >
@@ -356,8 +522,43 @@
           use:placedRootInteractions={b.id}
           onpointerdown={(e) => onPlacedPointerDownBubble(b, e)}
         >
-          <div class="widget spine-widget" role="group">
-            <SpineBlock block={b} />
+          <div class="placed-stack spine-stack">
+            <div class="widget spine-widget" role="group">
+              <SpineBlock block={b} />
+            </div>
+            <div class="caption-wrap caption-tight caption-tight--cells" data-caption-strip>
+              {#if captionEditingId === b.id}
+                <input
+                  class="cap-input"
+                  data-caption-editor
+                  bind:value={captionDraft}
+                  maxlength="80"
+                  onblur={() => commitCaption(b)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                />
+              {:else}
+                <button
+                  type="button"
+                  class="cap-hit"
+                  class:cap-hit--populated={Boolean(b.caption?.trim())}
+                  tabindex="-1"
+                  title="Double-click to add or edit label"
+                  aria-label={b.caption?.trim() ? 'Edit structure label' : 'Add structure label'}
+                  onmousedown={(e) => e.preventDefault()}
+                  ondblclick={(e) => {
+                    e.stopPropagation();
+                    void startCaptionEdit(b);
+                  }}
+                >
+                  {b.caption?.trim() ?? ''}
+                </button>
+              {/if}
+            </div>
           </div>
         </div>
       {:else}
@@ -372,20 +573,94 @@
           use:placedRootInteractions={b.id}
           onpointerdown={(e) => onPlacedPointerDownBubble(b, e)}
         >
-          <div class="widget" role="group">
-            {#if b.type === 'paragraph'}
-              <ParagraphBlock block={b} {onSlash} />
-            {:else if b.type === 'arrow'}
-              <ArrowBlock block={b} />
-            {:else if b.type === 'array'}
-              <ArrayBlock block={b} />
-            {:else if b.type === 'matrix'}
-              <MatrixBlock block={b} />
-            {/if}
-          </div>
+          {#if b.type === 'note'}
+            <div class="widget" role="group">
+              <NoteBlock block={b} {onSlash} />
+            </div>
+          {:else}
+            <div class="placed-stack">
+              <div class="widget" role="group">
+                {#if b.type === 'array'}
+                  <ArrayBlock block={b} />
+                {:else if b.type === 'matrix'}
+                  <MatrixBlock block={b} />
+                {/if}
+              </div>
+              <div class="caption-wrap caption-tight caption-tight--cells" data-caption-strip>
+                {#if captionEditingId === b.id}
+                  <input
+                    class="cap-input"
+                    data-caption-editor
+                    bind:value={captionDraft}
+                    maxlength="80"
+                    onblur={() => commitCaption(b)}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLInputElement).blur();
+                      }
+                    }}
+                  />
+                {:else}
+                  <button
+                    type="button"
+                    class="cap-hit"
+                    class:cap-hit--populated={Boolean(b.caption?.trim())}
+                    tabindex="-1"
+                    title="Double-click to add or edit label"
+                    aria-label={b.caption?.trim() ? 'Edit structure label' : 'Add structure label'}
+                    onmousedown={(e) => e.preventDefault()}
+                    ondblclick={(e) => {
+                      e.stopPropagation();
+                      void startCaptionEdit(b);
+                    }}
+                  >
+                    {b.caption?.trim() ?? ''}
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     {/each}
+
+    <div class="sketch-display" aria-hidden="true">
+      <svg class="sketch-svg">
+        {#each sketchStrokes as s (s.id)}
+          <polyline
+            class="pen-line"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke={s.color}
+            points={polyPoints(s.points)}
+          />
+        {/each}
+        {#if sketchLive && sketchLive.points.length > 0}
+          <polyline
+            class="pen-line live"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke={sketchLive.color}
+            points={polyPoints(sketchLive.points)}
+          />
+        {/if}
+      </svg>
+    </div>
+
+    {#if penActive}
+      <div
+        class="pen-capture"
+        role="presentation"
+        aria-hidden="true"
+        onpointerdown={onPenDown}
+        onpointermove={onPenMove}
+        onpointerup={onPenUp}
+        onpointercancel={onPenUp}
+      ></div>
+    {/if}
   </div>
 
   {#if structureMenu}
@@ -402,9 +677,9 @@
           ? () => {
               const st = structureMenu;
               if (!st) return;
-              const b = doc.blocks.find((x) => x.id === st.id);
+              const bl = doc.blocks.find((x) => x.id === st.id);
               structureMenu = null;
-              if (b) onOpenAutoCreate({ x: b.x + 40, y: b.y + 160 });
+              if (bl) onOpenAutoCreate({ x: bl.x + 40, y: bl.y + 160 });
             }
           : undefined}
       />
@@ -422,7 +697,7 @@
     padding: 0;
     overflow: auto;
     background-color: var(--bg);
-    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 0);
+    background-image: radial-gradient(circle at 1px 1px, var(--canvas-dot) 1px, transparent 0);
     background-size: 22px 22px;
     box-sizing: border-box;
     user-select: none;
@@ -438,9 +713,135 @@
   }
 
   .viewport :global([data-cell-input]),
-  .viewport :global(.paragraph-ta) {
+  .viewport :global(.note-ta) {
     user-select: text;
     -webkit-user-select: text;
+  }
+
+  .sketch-display {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .sketch-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .pen-capture {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    touch-action: none;
+    cursor: crosshair;
+    background: transparent;
+  }
+
+  .pen-line {
+    stroke-width: 2.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .pen-line.live {
+    opacity: 0.92;
+  }
+
+  .placed-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: fit-content;
+    max-width: 100%;
+    gap: 2px;
+  }
+
+  .spine-stack {
+    width: 100%;
+    max-width: none;
+  }
+
+  .caption-wrap {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .caption-tight {
+    margin-top: 0;
+  }
+
+  .caption-tight--cells {
+    align-self: center;
+    flex-shrink: 0;
+    width: calc(2 * 56px + 12px);
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .spine-stack .caption-tight--cells {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cap-hit {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    border: none;
+    background: transparent;
+    font: 600 11px var(--mono);
+    color: var(--muted);
+    min-height: 10px;
+    padding: 1px 4px 0;
+    cursor: default;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  .cap-hit:focus {
+    outline: none;
+  }
+
+  .cap-hit:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-b) 55%, transparent);
+    outline-offset: 1px;
+  }
+
+  .cap-hit:not(.cap-hit--populated) {
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  .cap-hit.cap-hit--populated {
+    color: var(--muted);
+  }
+
+  .cap-hit.cap-hit--populated:hover {
+    color: var(--text-h);
+    background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+  }
+
+  .placed.selected .cap-hit:not(.cap-hit--populated):hover {
+    opacity: 0.5;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--surface-2) 48%, transparent);
+  }
+
+  .cap-input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font: 600 11px var(--mono);
+    text-align: center;
+    padding: 2px 4px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-h);
   }
 
   .insert-marker {
@@ -478,7 +879,6 @@
   .placed:not(.spine-placed) {
     width: max-content;
     max-width: min(92vw, 960px);
-    /* Let block intrinsic width flow up; % max-width on .widget breaks max-content sizing. */
     min-width: min-content;
     box-sizing: border-box;
     padding: 10px;

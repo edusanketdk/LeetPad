@@ -2,20 +2,23 @@
   import { pushUndoPoint, removeBlock, type PlacedBlock } from '../lib/document.svelte';
 
   type MenuItem = { label: string; danger?: boolean; disabled?: boolean; run: () => void };
-  type MenuCategory = { title: string; hint?: string; items: MenuItem[] };
+  type MenuCategory = { title: string; items: MenuItem[] };
 
   type Props = {
     block: PlacedBlock;
     open: boolean;
-    /** Viewport coordinates (px) for fixed panel top-left */
     left: number;
     top: number;
     onClose: () => void;
-    /** Opens the shell “Auto create” flow from the structure menu. */
     onAutoCreate?: () => void;
   };
 
   let { block, open, left, top, onClose, onAutoCreate }: Props = $props();
+
+  function structureTypeLabel(t: PlacedBlock['type']): string {
+    if (t === 'spine') return 'lineBreak';
+    return t;
+  }
 
   let panelEl: HTMLDivElement | null = $state(null);
 
@@ -82,17 +85,6 @@
             },
           ],
         },
-        {
-          title: 'Algorithms',
-          hint: 'Coming soon',
-          items: [
-            {
-              label: 'Sort, prefix sum, …',
-              disabled: true,
-              run: () => {},
-            },
-          ],
-        },
         actions,
       ];
     }
@@ -143,44 +135,6 @@
             },
           ],
         },
-        {
-          title: 'Algorithms',
-          hint: 'Coming soon',
-          items: [{ label: 'Transforms on grid', disabled: true, run: () => {} }],
-        },
-        actions,
-      ];
-    }
-
-    if (block.type === 'paragraph') {
-      return [
-        {
-          title: 'Edit',
-          hint: 'More paragraph tools later',
-          items: [{ label: 'Rich formatting', disabled: true, run: () => {} }],
-        },
-        actions,
-      ];
-    }
-
-    if (block.type === 'arrow') {
-      return [
-        {
-          title: 'Style',
-          hint: 'Coming soon',
-          items: [{ label: 'Variants & labels', disabled: true, run: () => {} }],
-        },
-        actions,
-      ];
-    }
-
-    if (block.type === 'spine') {
-      return [
-        {
-          title: 'Appearance',
-          hint: 'Coming soon',
-          items: [{ label: 'Weight, color, caption', disabled: true, run: () => {} }],
-        },
         actions,
       ];
     }
@@ -214,16 +168,13 @@
   >
     <div class="panel-head">
       <span class="panel-title">Structure</span>
-      <span class="panel-type">{block.type}</span>
+      <span class="panel-type">{structureTypeLabel(block.type)}</span>
     </div>
     <div class="panel-body">
       {#each categories as cat (cat.title)}
         <div class="cat">
           <div class="cat-head">
             <span class="cat-title">{cat.title}</span>
-            {#if cat.hint}
-              <span class="cat-hint">{cat.hint}</span>
-            {/if}
           </div>
           {#each cat.items as it (it.label)}
             <button
@@ -304,10 +255,6 @@
   }
 
   .cat-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
     padding: 4px 16px 8px;
   }
 
@@ -316,12 +263,6 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted-2);
-  }
-
-  .cat-hint {
-    font: 500 10px var(--sans);
-    color: var(--muted-2);
-    font-style: italic;
   }
 
   .item {

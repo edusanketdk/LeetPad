@@ -1,17 +1,12 @@
 export type BlockId = string;
 
-export type ParagraphBlock = {
+export type NoteBlock = {
   id: BlockId;
-  type: 'paragraph';
+  type: 'note';
   content: string;
-  /** CSS pixels; persisted for resize */
+  /** Optional persisted size from auto-grow (px). */
   width?: number;
   height?: number;
-};
-
-export type ArrowBlock = {
-  id: BlockId;
-  type: 'arrow';
 };
 
 export type ArrayBlock = {
@@ -26,10 +21,10 @@ export type MatrixBlock = {
   rows: string[][];
 };
 
-/** Full-width horizontal guide across the board canvas (like a section spine). */
+/** Full-width horizontal guide across the board canvas. */
 export type SpineBlock = {
   id: BlockId;
   type: 'spine';
 };
 
-export type Block = ParagraphBlock | ArrowBlock | ArrayBlock | MatrixBlock | SpineBlock;
+export type Block = NoteBlock | ArrayBlock | MatrixBlock | SpineBlock;
