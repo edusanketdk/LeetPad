@@ -1,0 +1,64 @@
+:root {
+  --sans: 'Nunito', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --brand-display: 'Nunito', system-ui, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --bg: #fbfbfc;
+  --surface: #ffffff;
+  --surface-2: #f4f5f7;
+  --surface-3: #eceef2;
+  --text: #3c3f47;
+  --text-h: #0f1115;
+  --muted: #6b7280;
+  --muted-2: #9ca3af;
+  --border: #e6e8ee;
+  --border-strong: #cfd6e4;
+  --shadow: 0 18px 50px rgba(15, 17, 21, 0.12);
+  --help-overlay: rgba(15, 17, 21, 0.28);
+
+  --accent-r: #dc2626;
+  --accent-g: #16a34a;
+  --accent-b: #fea116;
+
+  color-scheme: light;
+  font: 16px/1.55 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.dark {
+  --bg: #121316;
+  --surface: #16181d;
+  --surface-2: #1b1e25;
+  --surface-3: #22262f;
+  --text: #c5c9d3;
+  --text-h: #eef1f7;
+  --muted: #9aa3b2;
+  --muted-2: #7b8494;
+  --border: #2a2f3a;
+  --border-strong: #3b4454;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --help-overlay: rgba(0, 0, 0, 0.45);
+
+  --accent-r: #f87171;
+  --accent-g: #4ade80;
+  --accent-b: #fea116;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#app {
+  min-height: 100svh;
+}

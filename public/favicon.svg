@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded square pad -->
+  <rect
+    x="76"
+    y="76"
+    width="360"
+    height="360"
+    rx="72"
+    stroke="#FFA116"
+    stroke-width="36"
+    fill="none"
+  />
+
+  <!-- Forward slash -->
+  <path
+    d="M320 150L190 362"
+    stroke="#FFA116"
+    stroke-width="42"
+    stroke-linecap="round"
+  />
+</svg>
