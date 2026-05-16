@@ -1,0 +1,11 @@
+# LeetPad — https://leetpad.in
+
+> Free browser scratch pad for coding interviews and LeetCode-style practice: arrays, matrices, compact notes, line breaks, and pen marks on an infinite canvas. Open source (MIT).
+
+## For humans
+- Site: https://leetpad.in
+- Source: https://github.com/edusanketdk/leetpad
+
+## For crawlers
+- Sitemap: https://leetpad.in/sitemap.xml
+- Robots: https://leetpad.in/robots.txt
