@@ -15,13 +15,16 @@
     structureClipboard,
     newId,
   } from './lib/document.svelte';
+  import { undoSketchStroke, redoSketchStroke, clearAllSketches } from './lib/sketches.svelte';
   import { filterCommands, applyCommand, type CommandDef } from './lib/commands';
   import { focusBlockRoot } from './lib/focusRegistry';
-  import { isEditingTextField } from './lib/focus-util';
+  import { isEditingTextField, isInAppModalField } from './lib/focus-util';
   import type { Block } from './lib/types';
   import { parseStructureInput } from './lib/parseStructureInput';
   import ScratchCanvas from './components/ScratchCanvas.svelte';
   import SlashPalette from './components/SlashPalette.svelte';
+  import PenRadialMenu from './components/PenRadialMenu.svelte';
+  import type { PenColorKey } from './lib/penColor';
 
   let slashOpen = $state(false);
   let slashFilter = $state('');
@@ -37,13 +40,32 @@
   type AutoCreateModal = { x: number; y: number; text: string; error: string };
   let autoCreateModal = $state<AutoCreateModal | null>(null);
   let helpOpen = $state(false);
+  let penActive = $state(false);
+  let penColorKey = $state<PenColorKey>('ink');
   let dark = $state(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
 
   const slashCommands = $derived(filterCommands(slashFilter));
 
+  const penStrokeColor = $derived(
+    penColorKey === 'r'
+      ? '#e53935'
+      : penColorKey === 'g'
+        ? '#43a047'
+        : penColorKey === 'b'
+          ? '#1e88e5'
+          : dark
+            ? '#eceff4'
+            : '#12141a',
+  );
+
   $effect(() => {
     slashFilter;
     slashActive = 0;
+  });
+
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.toggleAttribute('data-pen-draw', penActive);
   });
 
   function openSlash(anchor?: { x: number; y: number }) {
@@ -143,6 +165,7 @@
 
   function clearEntireBoard() {
     if (!confirm('Erase the entire canvas? You can undo with Ctrl+Z afterwards.')) return;
+    clearAllSketches();
     replaceBlocks([]);
   }
 
@@ -203,6 +226,12 @@
       return;
     }
 
+    if (autoCreateModal && e.key === 'Escape') {
+      e.preventDefault();
+      cancelAutoCreate();
+      return;
+    }
+
     if (helpOpen && e.key === 'Escape') {
       e.preventDefault();
       closeHelp();
@@ -220,7 +249,13 @@
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v' && !isEditingTextField() && structureClipboard.snapshot) {
+    if (
+      (e.metaKey || e.ctrlKey) &&
+      e.key.toLowerCase() === 'v' &&
+      !isEditingTextField() &&
+      !isInAppModalField() &&
+      structureClipboard.snapshot
+    ) {
       e.preventDefault();
       const pos = doc.insertAnchor ?? { x: 120, y: 100 };
       const pasted = pasteStructureAt(pos);
@@ -234,25 +269,28 @@
     }
 
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-      if (!isEditingTextField()) {
+      if (!isEditingTextField() && !isInAppModalField()) {
         e.preventDefault();
-        redoEditor();
+        if (penActive) redoSketchStroke();
+        else redoEditor();
       }
       return;
     }
 
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-      if (!isEditingTextField()) {
+      if (!isEditingTextField() && !isInAppModalField()) {
         e.preventDefault();
-        undoEditor();
+        if (penActive) undoSketchStroke();
+        else undoEditor();
       }
       return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-      if (!isEditingTextField()) {
+      if (!isEditingTextField() && !isInAppModalField()) {
         e.preventDefault();
-        redoEditor();
+        if (penActive) redoSketchStroke();
+        else redoEditor();
       }
       return;
     }
@@ -265,8 +303,14 @@
 
     if (e.key === 'Escape' && doc.selectedBlockId && !isEditingTextField()) {
       e.preventDefault();
-      doc.selectedBlockId = null;
-      doc.cellLinearFocus = null;
+      const id = doc.selectedBlockId;
+      const b = doc.blocks.find((x) => x.id === id);
+      if (b?.type === 'note' && !String(b.content ?? '').trim()) {
+        removeBlock(id);
+      } else {
+        doc.selectedBlockId = null;
+        doc.cellLinearFocus = null;
+      }
       return;
     }
 
@@ -301,6 +345,13 @@
     const el = e.target as HTMLElement;
     if (el.closest('.viewport')) return;
     doc.insertAnchor = null;
+    const id = doc.selectedBlockId;
+    if (id) {
+      const b = doc.blocks.find((x) => x.id === id);
+      if (b?.type === 'note' && !String(b.content ?? '').trim()) {
+        removeBlock(id);
+      }
+    }
   }}
 >
   <header class="top">
@@ -310,6 +361,14 @@
       </span>
     </div>
     <div class="actions">
+      <PenRadialMenu
+        {penActive}
+        {penColorKey}
+        {dark}
+        onTogglePen={() => (penActive = !penActive)}
+        onPickColor={(k) => (penColorKey = k)}
+        onClearSketches={clearAllSketches}
+      />
       <button
         type="button"
         class="theme-btn"
@@ -320,7 +379,16 @@
         {#if dark}
           <span class="theme-icon" aria-hidden="true">☀</span>
         {:else}
-          <span class="theme-icon" aria-hidden="true">☽</span>
+          <svg class="theme-moon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.35"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+            />
+          </svg>
         {/if}
       </button>
       <button type="button" class="ghost" onclick={() => openSlash()} title="Insert (⌘/)">Insert</button>
@@ -330,6 +398,8 @@
   </header>
 
   <ScratchCanvas
+    {penActive}
+    penStrokeColor={penStrokeColor}
     onSlash={() => openSlash()}
     onEmptyContextMenu={onCanvasContextInsert}
     onOpenAutoCreate={openAutoCreateAt}
@@ -347,7 +417,13 @@
 
   {#if autoCreateModal}
     <div class="dim-back" role="presentation" onclick={cancelAutoCreate}></div>
-    <div class="dim-panel paste-panel" role="dialog" aria-modal="true" aria-labelledby="auto-create-title">
+    <div
+      class="dim-panel paste-panel"
+      data-app-modal
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auto-create-title"
+    >
       <h2 id="auto-create-title" class="dim-h">Auto create</h2>
       <p class="paste-hint">
         Paste structured text in a supported format. The board will add a matching widget and fill values when
@@ -377,7 +453,7 @@
 
   {#if dim}
     <div class="dim-back" role="presentation" onclick={cancelDim}></div>
-    <div class="dim-panel" role="dialog" aria-modal="true" aria-labelledby="dim-title">
+    <div class="dim-panel" data-app-modal role="dialog" aria-modal="true" aria-labelledby="dim-title">
       <h2 id="dim-title" class="dim-h">
         {dim.kind === 'array' ? 'Array size' : 'Matrix size'}
       </h2>
@@ -449,6 +525,21 @@
               >
             </tr>
             <tr>
+              <td>Pen / marks</td>
+              <td
+                >Click ✎ to turn the pen on (orange). Options open to the left in the bar: pick stroke color, or clear
+                all marks. Click ✎ again to turn the pen off. Marks stay on the canvas when the pen is off.</td
+              >
+            </tr>
+            <tr>
+              <td>Structure labels</td>
+              <td
+                >For arrays, matrices, and line breaks: double-click the narrow strip under the widget (about two cell
+                widths, centered) to set a short caption. A single click does not focus the label. Notes from the
+                canvas do not use this strip.</td
+              >
+            </tr>
+            <tr>
               <td>Copy / paste</td>
               <td><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>V</kbd> on a selected structure when not typing in a cell.</td>
             </tr>
@@ -457,10 +548,10 @@
               <td>Right-click a structure, or <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>/</kbd> while focus is inside it.</td>
             </tr>
             <tr>
-              <td>Paragraph drag</td>
+              <td>Note drag</td>
               <td
-                >Select the paragraph (click padding), then drag from the text area (small move starts a drag). While
-                typing inside, use <kbd>Alt</kbd>+drag or drag the outer padding.</td
+                >Double-click empty canvas to add a compact note. Select it (click padding), then drag from the text
+                area after a small move. While typing, use <kbd>Alt</kbd>+drag or drag the outer padding.</td
               >
             </tr>
             <tr>
@@ -471,7 +562,7 @@
               >
             </tr>
             <tr>
-              <td>Section spine</td>
+              <td>Line break</td>
               <td>Full-width horizontal guide across the canvas.</td>
             </tr>
             <tr>
@@ -480,7 +571,7 @@
             </tr>
             <tr>
               <td>Tab</td>
-              <td>Indent in a paragraph list, or move between array/matrix cells.</td>
+              <td>Indent in a note list, or move between array/matrix cells.</td>
             </tr>
             <tr>
               <td>Lists</td>
@@ -488,7 +579,14 @@
             </tr>
             <tr>
               <td>Undo / redo</td>
-              <td><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> · <kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd></td>
+              <td
+                >While the pen is on, <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> (and redo shortcuts) apply only to
+                freehand marks. With the pen off, those shortcuts undo and redo board edits (structures, moves, …).</td
+              >
+            </tr>
+            <tr>
+              <td>Clear</td>
+              <td>Header Clear removes every structure and all pen marks (confirm first).</td>
             </tr>
             <tr>
               <td>Delete</td>
@@ -519,7 +617,7 @@
 
   .top {
     flex: 0 0 auto;
-    z-index: 20;
+    z-index: 200;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -546,7 +644,7 @@
     align-items: baseline;
     padding: 5px 12px 6px;
     border-radius: 11px;
-    background: #0f1115;
+    background: transparent;
   }
 
   .log-o {
@@ -554,7 +652,7 @@
   }
 
   .log-w {
-    color: #fff;
+    color: var(--text-h);
   }
 
   .actions {
@@ -623,6 +721,11 @@
     font-size: 18px;
     line-height: 1;
     user-select: none;
+  }
+
+  .theme-moon {
+    display: block;
+    transform: rotate(18deg);
   }
 
   .help-btn {

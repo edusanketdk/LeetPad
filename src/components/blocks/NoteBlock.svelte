@@ -2,28 +2,34 @@
   import { doc, setSelectedBlock, exitCellFocus, type PlacedBlock } from '../../lib/document.svelte';
   import { registerBlockRoot } from '../../lib/focusRegistry';
 
-  type Props = { block: PlacedBlock & { type: 'paragraph' }; onSlash?: () => void };
+  type Props = { block: PlacedBlock & { type: 'note' }; onSlash?: () => void };
   let { block, onSlash }: Props = $props();
 
   let ta: HTMLTextAreaElement | null = $state(null);
 
-  const defaultW = 268;
-  const defaultH = 128;
+  const minW = 96;
+  const minH = 24;
 
   $effect(() => {
     registerBlockRoot(block.id, ta);
     return () => registerBlockRoot(block.id, null);
   });
 
-  $effect(() => {
+  function autosize() {
     if (!ta) return;
-    const ro = new ResizeObserver(() => {
-      if (!ta) return;
-      block.width = Math.round(ta.offsetWidth);
-      block.height = Math.round(ta.offsetHeight);
-    });
-    ro.observe(ta);
-    return () => ro.disconnect();
+    ta.style.width = '1px';
+    ta.style.height = '0';
+    const w = Math.max(minW, Math.min(920, ta.scrollWidth + 6));
+    const h = Math.max(minH, ta.scrollHeight + 4);
+    ta.style.width = `${w}px`;
+    ta.style.height = `${h}px`;
+    block.width = Math.round(w);
+    block.height = Math.round(h);
+  }
+
+  $effect(() => {
+    block.content;
+    queueMicrotask(() => autosize());
   });
 
   const selected = $derived(doc.selectedBlockId === block.id);
@@ -52,13 +58,7 @@
     const a = ta.selectionStart;
     const b = ta.selectionEnd;
 
-    if (
-      e.key === '/' &&
-      a === 0 &&
-      b === 0 &&
-      !e.metaKey &&
-      !e.ctrlKey
-    ) {
+    if (e.key === '/' && a === 0 && b === 0 && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       onSlash?.();
       return;
@@ -121,25 +121,42 @@
 <div class="wrap" class:selected>
   <textarea
     bind:this={ta}
-    class="ta paragraph-ta"
-    style:width="{block.width ?? defaultW}px"
-    style:height="{block.height ?? defaultH}px"
+    class="ta note-ta"
     bind:value={block.content}
-    oninput={(e) => queueMicrotask(() => scrollCaretIfAtEnd(e.currentTarget))}
+    oninput={(e) => {
+      queueMicrotask(() => {
+        scrollCaretIfAtEnd(e.currentTarget);
+        autosize();
+      });
+    }}
     onfocus={onfocus}
     onkeydown={onkeydown}
     spellcheck="false"
-    aria-label="Paragraph"
+    rows="1"
+    aria-label="Note"
   ></textarea>
 </div>
 
 <style>
   .wrap {
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid transparent;
-    padding: 12px 14px;
+    padding: 1px 3px;
     background: transparent;
-    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    width: fit-content;
+    max-width: min(92vw, 960px);
+    box-sizing: border-box;
+  }
+
+  .wrap:not(:focus-within) .ta {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .wrap:focus-within .ta {
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   .selected {
@@ -150,22 +167,26 @@
   .ta {
     display: block;
     box-sizing: border-box;
-    resize: both;
-    min-width: 176px;
-    min-height: 96px;
-    max-width: 1200px;
+    resize: none;
+    min-width: 96px;
+    min-height: 24px;
+    max-width: 920px;
     border: none;
-    background: color-mix(in srgb, var(--surface) 18%, transparent);
+    background: color-mix(in srgb, var(--surface) 16%, transparent);
     color: var(--text-h);
-    font: 500 13px/1.55 var(--sans);
-    padding: 10px 12px;
+    font: 500 13px/1.45 var(--sans);
+    padding: 4px 6px;
     outline: none;
-    white-space: pre-wrap;
+    white-space: pre;
+    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
     tab-size: 8;
-    overflow-wrap: break-word;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .selected .ta {
-    background: color-mix(in srgb, var(--surface) 28%, transparent);
+    background: color-mix(in srgb, var(--surface) 26%, transparent);
   }
 </style>

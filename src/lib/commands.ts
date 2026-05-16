@@ -1,7 +1,7 @@
 import type { Block } from './types';
 import { factory, insertBlockNear, type PlacedBlock } from './document.svelte';
 
-export type CommandId = 'paragraph' | 'arrow' | 'array' | 'matrix' | 'spine' | 'autoCreate';
+export type CommandId = 'array' | 'matrix' | 'lineBreak' | 'autoCreate' | 'text';
 
 export type CommandDef = {
   id: CommandId;
@@ -16,38 +16,32 @@ export const COMMANDS: CommandDef[] = [
     id: 'autoCreate',
     title: 'Auto create',
     keywords: ['auto', 'import', 'infer', 'input', 'build', 'from'],
-    run: () => factory('paragraph'),
+    run: () => factory('note'),
   },
   {
-    id: 'paragraph',
-    title: 'Paragraph',
-    keywords: ['text', 'p'],
-    run: () => factory('paragraph'),
+    id: 'text',
+    title: 'Text',
+    keywords: ['note', 'txt', 'write', 'label'],
+    run: () => factory('note'),
   },
   {
-    id: 'arrow',
-    title: 'Step arrow',
-    keywords: ['arrow', 'flow', 'step'],
-    run: () => factory('arrow'),
-  },
-  {
-    id: 'spine',
-    title: 'Section spine',
-    keywords: ['divider', 'sep', 'hr', 'line', 'break', 'rule'],
+    id: 'lineBreak',
+    title: 'Line break',
+    keywords: ['divider', 'sep', 'hr', 'line', 'break', 'rule', 'spine'],
     run: () => factory('spine'),
   },
   {
     id: 'array',
     title: 'Array',
     keywords: ['arr', '1d'],
-    run: () => factory('paragraph'),
+    run: () => factory('note'),
     needsDimensions: true,
   },
   {
     id: 'matrix',
     title: 'Matrix',
     keywords: ['grid', '2d', 'table'],
-    run: () => factory('paragraph'),
+    run: () => factory('note'),
     needsDimensions: true,
   },
 ];

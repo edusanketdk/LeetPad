@@ -14,7 +14,14 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div bind:this={root} class="spine" role="separator" aria-orientation="horizontal" tabindex="0">
+<div
+  bind:this={root}
+  class="spine"
+  role="separator"
+  aria-orientation="horizontal"
+  aria-label="Line break"
+  tabindex="0"
+>
   <div class="line" aria-hidden="true"></div>
 </div>
 

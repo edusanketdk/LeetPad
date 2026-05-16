@@ -118,7 +118,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-width: 22ch;
+    align-items: stretch;
+    width: min-content;
   }
 
   .idx {
@@ -135,9 +136,11 @@
     background: var(--surface);
     min-width: 56px;
     min-height: 56px;
+    max-width: 22ch;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
   }
 
   .val {
@@ -151,7 +154,7 @@
     outline: none;
     min-height: 56px;
     min-width: 56px;
-    max-width: 100%;
+    max-width: 22ch;
     field-sizing: content;
     width: 100%;
   }

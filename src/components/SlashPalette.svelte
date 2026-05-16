@@ -31,7 +31,6 @@
           onclick={() => onPick(cmd)}
         >
           <span class="title">/{cmd.id}</span>
-          <span class="hint">{cmd.title}</span>
         </button>
       {/each}
     {/if}
@@ -64,8 +63,8 @@
   .row {
     width: 100%;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: flex-start;
     gap: 12px;
     text-align: left;
     border: none;
@@ -85,12 +84,8 @@
   .title {
     font-family: var(--mono);
     font-size: 14px;
+    font-weight: 600;
     color: var(--text-h);
-  }
-
-  .hint {
-    font-size: 13px;
-    opacity: 0.85;
   }
 
   .empty {
