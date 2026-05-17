@@ -68,6 +68,13 @@
     document.documentElement.toggleAttribute('data-pen-draw', penActive);
   });
 
+  $effect(() => {
+    if (!autoCreateModal) return;
+    void tick().then(() => {
+      document.getElementById('auto-create-ta')?.focus();
+    });
+  });
+
   function openSlash(anchor?: { x: number; y: number }) {
     autoCreateModal = null;
     slashOpen = true;
@@ -426,8 +433,8 @@
     >
       <h2 id="auto-create-title" class="dim-h">Auto create</h2>
       <p class="paste-hint">
-        Paste structured text in a supported format. The board will add a matching widget and fill values when
-        possible. More structure types will be supported over time.
+        Type or paste values in almost any shape: comma-separated tokens, JSON-style lists, or row lists in brackets.
+        The board guesses an array or matrix and trims to size limits (32 cells in a row, 16×16 matrices).
       </p>
       <label class="dim-row paste-label" for="auto-create-ta">Input</label>
       <textarea
@@ -436,7 +443,7 @@
         bind:value={autoCreateModal.text}
         rows="8"
         spellcheck="false"
-        placeholder='[1,2,3] or [["a","b"],["c","d"]]'
+        placeholder="e.g. a,b,c or 1,3,a,b — or [[1,a], [b,c]] / [1,2,3] / [[1,2],[3,4]]"
         oninput={() => {
           if (autoCreateModal?.error) autoCreateModal = { ...autoCreateModal, error: '' };
         }}
@@ -510,11 +517,14 @@
             <tr>
               <td>Auto create</td>
               <td
-                >Choose Auto create from the insert palette (<kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>/</kbd>) or a
-                structure’s menu. Paste supported bracket-list text (for example <code class="help-code">[1,2,3]</code>
-                or
-                <code class="help-code">[[1,2],[3,4]]</code>) to infer an array or matrix. New widgets are nudged so they
-                do not overlap others.</td
+                >Open from the insert palette (<kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>/</kbd>) or from a note / line-break
+                structure menu. Auto create is permissive: comma-separated values become a 1D array (for example
+                <code class="help-code">a,b,c</code> or <code class="help-code">1,3,a,b</code>); bracket lists work with
+                or without strict JSON (for example <code class="help-code">[1,2,3]</code>,
+                <code class="help-code">[a,b,c]</code>, <code class="help-code">[[1,a], [b,c]]</code>, or
+                <code class="help-code">[[1,2],[3,4]]</code>); multiple lines of row-shaped lines like
+                <code class="help-code">[1,2]</code> on one line and <code class="help-code">[3,4]</code> on the next
+                merge into a matrix. New widgets are nudged so they do not overlap others.</td
               >
             </tr>
             <tr>

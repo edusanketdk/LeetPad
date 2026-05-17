@@ -1,3 +1,7 @@
+# LeetPad — https://leetpad.in
+# Crawlers: allow all. Sitemap URL is absolute so mirrors pick the canonical host.
+# The live site serves this file as text/plain; see public/_headers (Cloudflare Pages / Workers static assets).
+
 User-agent: *
 Allow: /
 
