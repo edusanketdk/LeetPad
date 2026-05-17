@@ -36,6 +36,15 @@
       inputs[next]?.focus();
       return;
     }
+    if (e.key === 'Backspace') {
+      const inp = e.target as HTMLInputElement;
+      if (inp.value !== '' || e.repeat) return;
+      e.preventDefault();
+      const inputs = cellInputs();
+      const cur = inputs.indexOf(inp);
+      if (cur > 0) inputs[cur - 1]?.focus();
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       root?.focus();

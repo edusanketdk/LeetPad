@@ -673,7 +673,7 @@
         left={menuState.left}
         top={menuState.top}
         onClose={() => (structureMenu = null)}
-        onAutoCreate={onOpenAutoCreate
+        onAutoCreate={onOpenAutoCreate && (mb.type === 'note' || mb.type === 'spine')
           ? () => {
               const st = structureMenu;
               if (!st) return;

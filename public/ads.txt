@@ -1,0 +1,2 @@
+# LeetPad (leetpad.in) — no programmatic ad sellers configured.
+# Replace this file with your authorized sellers when applicable.

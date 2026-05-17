@@ -1,9 +1,10 @@
-/** True when focus is inside a matrix/array cell or note body (not structure chrome). */
+/** True when focus is inside a matrix/array cell, note body, or sketch caption (not structure chrome). */
 export function isEditingTextField(): boolean {
   const el = document.activeElement;
   if (!(el instanceof HTMLElement)) return false;
   if (el.closest('[data-cell-input]')) return true;
   if (el.matches('textarea.note-ta')) return true;
+  if (el.closest('[data-caption-editor]')) return true;
   return false;
 }
 
